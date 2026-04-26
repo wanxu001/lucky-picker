@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>幸运选号</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 860px;
+      box-sizing: border-box;
+      text-align: center;
+      padding: 24px 20px;
+    }
+    h1 {
+      color: #e0e0ff;
+      margin: 0 0 12px 0;
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      font-weight: bold;
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px rgba(100,120,255,0.6);
+    }
+
+    /* 号码池区域 */
+    .pool-section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px 12px;
+      margin-bottom: 12px;
+    }
+    .pool-label {
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+    .pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .ball {
+      width: 2.4em;
+      height: 2.4em;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1em;
+      cursor: default;
+      transition: transform 0.1s, box-shadow 0.1s;
+      position: relative;
+    }
+    /* 前区球 - 默认灰色 */
+    .ball.front-ball {
+      background: radial-gradient(circle at 35% 35%, #555 0%, #333 60%, #222 100%);
+      color: #888;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    /* 后区球 - 默认灰色 */
+    .ball.back-ball {
+      background: radial-gradient(circle at 35% 35%, #555 0%, #333 60%, #222 100%);
+      color: #888;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    /* 光标悬停状态 */
+    .ball.cursor {
+      background: radial-gradient(circle at 35% 35%, #fff9c4 0%, #ffd600 60%, #ff8f00 100%) !important;
+      color: #333 !important;
+      transform: scale(1.25) !important;
+      box-shadow: 0 0 18px 6px rgba(255,214,0,0.7), 0 0 6px rgba(255,214,0,0.9) !important;
+      z-index: 10;
+    }
+    /* 前区选中状态 */
+    .ball.front-ball.selected {
+      background: radial-gradient(circle at 35% 35%, #ff6b6b 0%, #e74c3c 60%, #c0392b 100%);
+      color: white;
+      box-shadow: 0 0 12px rgba(231,76,60,0.6), 0 3px 8px rgba(0,0,0,0.3);
+      transform: scale(1.05);
+    }
+    /* 后区选中状态 */
+    .ball.back-ball.selected {
+      background: radial-gradient(circle at 35% 35%, #5dade2 0%, #3498db 60%, #2980b9 100%);
+      color: white;
+      box-shadow: 0 0 12px rgba(52,152,219,0.6), 0 3px 8px rgba(0,0,0,0.3);
+      transform: scale(1.05);
+    }
+
+    /* 结果区域 */
+    .result-section {
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 16px 12px;
+      margin: 12px 0;
+      min-height: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .result-label {
+      color: #aaa;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+    }
+    .result-balls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: nowrap;
+      justify-content: center;
+    }
+    .result-ball {
+      width: 2.6em;
+      height: 2.6em;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1em;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+    .result-ball.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .result-ball.front {
+      background: radial-gradient(circle at 35% 35%, #ff6b6b 0%, #e74c3c 60%, #c0392b 100%);
+      color: white;
+      box-shadow: 0 3px 10px rgba(231,76,60,0.5);
+    }
+    .result-ball.back {
+      background: radial-gradient(circle at 35% 35%, #5dade2 0%, #3498db 60%, #2980b9 100%);
+      color: white;
+      box-shadow: 0 3px 10px rgba(52,152,219,0.5);
+    }
+    .result-divider {
+      color: #666;
+      font-size: 1.4em;
+      font-weight: bold;
+    }
+    .result-placeholder {
+      color: #555;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+    }
+
+    /* 按钮 */
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 16px 0 8px;
+    }
+    button {
+      width: 45%;
+      max-width: 220px;
+      padding: 14px;
+      font-size: clamp(1rem, 3.5vw, 1.3rem);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.2s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #ssqButton { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    #dltButton { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    .hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    /* 状态文字 */
+    .status-text {
+      color: #ffd600;
+      font-size: 0.9rem;
+      min-height: 1.2em;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 480px) {
+      .container { padding: 12px 12px; }
+      .ball { width: 2.0em; height: 2.0em; font-size: 0.85em; }
+      .pool { gap: 6px; }
+      .result-ball { width: 2.2em; height: 2.2em; font-size: 0.9em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>幸运选号</h1>
+
+    <!-- 前区号码池 -->
+    <div class="pool-section">
+      <div class="pool-label">前区 (1-35)</div>
+      <div class="pool" id="frontPool"></div>
+    </div>
+
+    <!-- 后区号码池 -->
+    <div class="pool-section">
+      <div class="pool-label">后区 (1-12)</div>
+      <div class="pool" id="backPool"></div>
+    </div>
+
+    <!-- 状态 -->
+    <div class="status-text" id="statusText"></div>
+
+    <!-- 结果 -->
+    <div class="result-section">
+      <div class="result-balls" id="resultBalls">
+        <div class="result-placeholder">双击按钮选取你的幸运号码吧~</div>
+      </div>
+    </div>
+
+    <!-- 按钮 -->
+    <div class="button-container">
+      <button id="ssqButton">🎯 双色球</button>
+      <button id="dltButton">🎯 大乐透</button>
+    </div>
+    <div class="hint">为避免误触，请双击按钮刷新</div>
+  </div>
+
+  <script>
+    let spinning = false;
+
+    function fmt(n) { return n.toString().padStart(2, '0'); }
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+    // 初始化号码池（DocumentFragment 减少 DOM 操作）
+    function initPool(containerId, count, className) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      for (let i = 1; i <= count; i++) {
+        const ball = document.createElement('div');
+        ball.className = 'ball ' + className;
+        ball.id = containerId + '_' + i;
+        ball.textContent = fmt(i);
+        frag.appendChild(ball);
+      }
+      container.appendChild(frag);
+    }
+
+    // 跳动选号动画：从所有候选中选出一个目标
+    // containerId: 号码池容器id
+    // target: 最终选中的号码
+    // onDone: 完成回调
+    function jumpSelect(containerId, target, onDone) {
+      // 总步数：快→慢
+      const totalSteps = 22;
+      let step = 0;
+      let currentBall = null;
+
+      // 预缓存 pool DOM，减少每步重复查询
+      const poolEl = document.getElementById(containerId);
+
+      function getDelay(s) {
+        if (s < 6)  return 30;
+        if (s < 11) return 60;
+        if (s < 16) return 110;
+        if (s < 20) return 180;
+        return 260;
+      }
+
+      // 过滤掉已选中的球（+ 比 parseInt 快）
+      function availableNums() {
+        return Array.from(poolEl.querySelectorAll('.ball:not(.selected)'))
+          .map(b => +b.textContent);
+      }
+
+      function tick() {
+        // 移除上一个光标
+        if (currentBall) currentBall.classList.remove('cursor');
+
+        step++;
+        let num;
+        if (step >= totalSteps) {
+          // 最后一步：停在目标
+          num = target;
+        } else {
+          const avail = availableNums();
+          if (step >= totalSteps - 4) {
+            // 最后4步：在目标附近跳
+            const nearby = avail.filter(n => Math.abs(n - target) <= 5);
+            const cand = nearby.length > 1 ? nearby : (avail.length > 1 ? avail : [target]);
+            num = cand[Math.floor(Math.random() * cand.length)];
+          } else {
+            num = avail[Math.floor(Math.random() * avail.length)];
+          }
+        }
+
+        currentBall = poolEl.querySelector('#' + containerId + '_' + num);
+        if (currentBall) currentBall.classList.add('cursor');
+
+        if (step >= totalSteps) {
+          // 动画结束，标记为选中
+          setTimeout(() => {
+            if (currentBall) {
+              currentBall.classList.remove('cursor');
+              currentBall.classList.add('selected');
+            }
+            onDone();
+          }, 400);
+        } else {
+          setTimeout(tick, getDelay(step));
+        }
+      }
+
+      tick();
+    }
+
+    // 依次选号：picks是要选的号码数组，containerId是池子
+    function selectSequence(picks, containerId, onAllDone) {
+      let idx = 0;
+
+      function next() {
+        if (idx >= picks.length) {
+          onAllDone();
+          return;
+        }
+        const target = picks[idx];
+        idx++;
+        jumpSelect(containerId, target, () => {
+          setTimeout(next, 200);
+        });
+      }
+      next();
+    }
+
+    // 生成大乐透号码
+    // Fisher-Yates 洗牌（打乱顺序，不改变原始数据）
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function generateDlt() {
+      // Set 代替数组 includes，时间复杂度 O(n) → O(1)
+      const frontSet = new Set();
+      while (frontSet.size < 5) frontSet.add(randInt(1, 35));
+      const front = [...frontSet].sort((a,b)=>a-b);
+      const backSet = new Set();
+      while (backSet.size < 2) backSet.add(randInt(1, 12));
+      const back = [...backSet].sort((a,b)=>a-b);
+      return { front, back, frontShuffle: shuffle(front), backShuffle: shuffle(back) };
+    }
+
+    // 生成双色球号码
+    function generateSsq() {
+      // Set 代替数组 includes，时间复杂度 O(n) → O(1)
+      const redSet = new Set();
+      while (redSet.size < 6) redSet.add(randInt(1, 33));
+      const red = [...redSet].sort((a,b)=>a-b);
+      const blue = [randInt(1, 16)];
+      return { red, blue, redShuffle: shuffle(red) };
+    }
+
+    // 显示结果球（DocumentFragment 减少 DOM 操作）
+    function showResult(frontNums, backNums) {
+      const container = document.getElementById('resultBalls');
+      container.innerHTML = '';
+      const frag = document.createDocumentFragment();
+
+      frontNums.forEach((n, i) => {
+        const ball = document.createElement('div');
+        ball.className = 'result-ball front';
+        ball.textContent = fmt(n);
+        frag.appendChild(ball);
+        setTimeout(() => ball.classList.add('show'), 100 + i * 120);
+      });
+
+      const div = document.createElement('div');
+      div.className = 'result-divider';
+      div.textContent = '+';
+      frag.appendChild(div);
+      setTimeout(() => div.style.opacity = '1', 100 + frontNums.length * 120);
+
+      backNums.forEach((n, i) => {
+        const ball = document.createElement('div');
+        ball.className = 'result-ball back';
+        ball.textContent = fmt(n);
+        frag.appendChild(ball);
+        setTimeout(() => ball.classList.add('show'), 200 + frontNums.length * 120 + i * 120);
+      });
+
+      container.appendChild(frag);
+    }
+
+    function setStatus(text) {
+      document.getElementById('statusText').textContent = text;
+    }
+
+    function pickDlt() {
+      if (spinning) return;
+      spinning = true;
+      document.getElementById('dltButton').disabled = true;
+      document.getElementById('ssqButton').disabled = true;
+      document.getElementById('resultBalls').innerHTML = '<div class="result-placeholder">选号中...</div>';
+
+      // 初始化号码池
+      initPool('frontPool', 35, 'front-ball');
+      document.querySelector('#frontPool').closest('.pool-section').querySelector('.pool-label').textContent = '前区 (1-35)';
+      initPool('backPool', 12, 'back-ball');
+      document.querySelector('#backPool').closest('.pool-section').querySelector('.pool-label').textContent = '后区 (1-12)';
+
+      const nums = generateDlt();
+      setStatus('正在选前区号码...');
+
+      selectSequence(nums.frontShuffle, 'frontPool', () => {
+        setStatus('正在选后区号码...');
+        setTimeout(() => {
+          selectSequence(nums.backShuffle, 'backPool', () => {
+            setStatus('✨本次幸运号码✨');
+            showResult(nums.front, nums.back);
+            spinning = false;
+            document.getElementById('dltButton').disabled = false;
+            document.getElementById('ssqButton').disabled = false;
+          });
+        }, 400);
+      });
+    }
+
+    function pickSsq() {
+      if (spinning) return;
+      spinning = true;
+      document.getElementById('dltButton').disabled = true;
+      document.getElementById('ssqButton').disabled = true;
+      document.getElementById('resultBalls').innerHTML = '<div class="result-placeholder">选号中...</div>';
+
+      // 双色球：前区1-33，后区1-16
+      initPool('frontPool', 33, 'front-ball');
+      // 更新标签
+      document.querySelector('#frontPool').closest('.pool-section').querySelector('.pool-label').textContent = '红球 (1-33)';
+      initPool('backPool', 16, 'back-ball');
+      document.querySelector('#backPool').closest('.pool-section').querySelector('.pool-label').textContent = '蓝球 (1-16)';
+
+      const nums = generateSsq();
+      setStatus('正在选红球号码...');
+
+      selectSequence(nums.redShuffle, 'frontPool', () => {
+        setStatus('正在选蓝球号码...');
+        setTimeout(() => {
+          selectSequence(nums.blue, 'backPool', () => {
+            setStatus('✨本次幸运号码✨');
+            showResult(nums.red, nums.blue);
+            spinning = false;
+            document.getElementById('dltButton').disabled = false;
+            document.getElementById('ssqButton').disabled = false;
+          });
+        }, 400);
+      });
+    }
+
+    // 初始化页面
+    function initPage() {
+      spinning = false;
+      document.getElementById('resultBalls').innerHTML = '<div class="result-placeholder">双击按钮选取你的幸运号码吧~</div>';
+      document.getElementById('statusText').textContent = '✨本次幸运号码✨';
+      document.getElementById('dltButton').disabled = false;
+      document.getElementById('ssqButton').disabled = false;
+      initPool('frontPool', 35, 'front-ball');
+      document.querySelector('#frontPool').closest('.pool-section').querySelector('.pool-label').textContent = '前区 (1-35)';
+      initPool('backPool', 12, 'back-ball');
+      document.querySelector('#backPool').closest('.pool-section').querySelector('.pool-label').textContent = '后区 (1-12)';
+    }
+
+    // 双击触发
+    function setupDoubleTap(btn, fn) {
+      let lastTap = 0;
+      btn.addEventListener('click', function() {
+        const now = Date.now();
+        if (now - lastTap < 350) fn();
+        lastTap = now;
+      });
+    }
+
+    setupDoubleTap(document.getElementById('ssqButton'), pickSsq);
+    setupDoubleTap(document.getElementById('dltButton'), pickDlt);
+
+    // 页面加载后初始化，并自动触发一次大乐透选号
+    window.onload = function() {
+      initPage();
+    };
+  </script>
+</body>
+</html>
