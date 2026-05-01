@@ -1,1 +1,1 @@
-# lucky-picker
+# lotto
